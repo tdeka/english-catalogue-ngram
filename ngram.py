@@ -47,7 +47,8 @@ if query:
         xaxis_title="Year",
         yaxis_title="Number of Titles Containing Word",
         hovermode='x unified',
-        template='plotly_white'
+        template='plotly_white',
+        yaxis=dict(range=[0, None])  # This forces the y-axis to start at 0
     )
     
     st.plotly_chart(fig, use_container_width=True)
