@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objs as go
+import re
 
 @st.cache_data
 def load_data():
@@ -26,7 +27,8 @@ if query:
         counts = []
         for year in years:
             titles_this_year = df[df['year'] == year]['title']
-            count = titles_this_year.str.contains(rf'\b{word}\b').sum()
+            pattern = rf'(?<!\w){re.escape(word)}(?!\w)'
+            count = titles_this_year.str.contains(pattern, regex=True).sum()
             counts.append(count)
         counts_df[word] = counts
     
