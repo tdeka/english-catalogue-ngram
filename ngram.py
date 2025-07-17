@@ -1,58 +1,61 @@
 import streamlit as st
 import pandas as pd
-import plotly.graph_objs as go
-import re
+import matplotlib.pyplot as plt
+import string
 
+st.set_page_config(layout="wide")
+
+# Load data and preprocess
 @st.cache_data
 def load_data():
     df = pd.read_csv("all_titles_by_year.csv")
     df['year'] = df['year'].astype(int)
     df['title'] = df['title'].astype(str).str.lower()
+    # Remove punctuation from titles
+    df['title'] = df['title'].str.translate(str.maketrans('', '', string.punctuation))
     return df
 
 df = load_data()
 
-st.title("English Catalogue Title N-Gram Viewer (1912-1922)")
-st.write("Enter one or more words (comma-separated). The plot shows how many times each word appears in titles per year.")
+# Sidebar input
+st.sidebar.title("Search Settings")
+search_terms_input = st.sidebar.text_input("Enter words/phrases separated by commas", "poem")
+search_terms = [term.strip().lower() for term in search_terms_input.split(",") if term.strip()]
+min_year, max_year = int(df["year"].min()), int(df["year"].max())
+year_range = st.sidebar.slider("Select year range", min_year, max_year, (min_year, max_year))
 
-query = st.text_input("Search word(s):")
+# Filter data by year
+filtered_df = df[(df["year"] >= year_range[0]) & (df["year"] <= year_range[1])]
 
-if query:
-    words = [w.strip().lower() for w in query.split(",") if w.strip()]
-    years = list(range(1912, 1923))
-    
-    counts_df = pd.DataFrame({'year': years})
-    
-    for word in words:
-        counts = []
-        for year in years:
-            titles_this_year = df[df['year'] == year]['title']
-            pattern = rf'(?<!\w){re.escape(word)}(?!\w)'
-            count = titles_this_year.str.contains(pattern, regex=True).sum()
-            counts.append(count)
-        counts_df[word] = counts
-    
-    # Create interactive plotly figure
-    fig = go.Figure()
-    
-    for word in words:
-        fig.add_trace(go.Scatter(
-            x=counts_df['year'],
-            y=counts_df[word],
-            mode='lines+markers',
-            name=word,
-            hovertemplate='Year: %{x}<br>Count: %{y}<extra></extra>'
-        ))
-    
-    fig.update_layout(
-        title="Word Frequency in English Catalogue Titles (1912-1922)",
-        xaxis_title="Year",
-        yaxis_title="Number of Titles Containing Word",
-        hovermode='x unified',
-        template='plotly_white',
-        yaxis=dict(range=[0, None])  # This forces the y-axis to start at 0
-    )
-    
-    st.plotly_chart(fig, use_container_width=True)
-else:
-    st.write("Type one or more words above and press enter to see the n-gram visualization.") 
+# Count search terms per year
+year_counts = {}
+for word in search_terms:
+    year_counts[word] = []
+    for year in range(year_range[0], year_range[1] + 1):
+        titles_this_year = filtered_df[filtered_df["year"] == year]["title"]
+        count = titles_this_year.str.contains(word, regex=False).sum()
+        year_counts[word].append((year, count))
+
+# Plotting
+plt.figure(figsize=(12, 6))
+for word, counts in year_counts.items():
+    years, counts = zip(*counts)
+    plt.plot(years, counts, label=word)
+plt.xlabel("Year")
+plt.ylabel("Count")
+plt.title("Frequency of Terms in Titles Over Time")
+plt.legend()
+plt.grid(True)
+st.pyplot(plt)
+
+# Optional Debug Output
+st.subheader("Matching Titles (Sample)")
+sample_year = st.sidebar.selectbox("Choose a year to preview matches", list(range(year_range[0], year_range[1] + 1)))
+titles_this_year = filtered_df[filtered_df["year"] == sample_year]["title"]
+
+for word in search_terms:
+    matching_titles = titles_this_year[titles_this_year.str.contains(word, regex=False)]
+    st.markdown(f"**Matches for '{word}' in {sample_year}:**")
+    for title in matching_titles.head(10):  # show only first 10 matches for brevity
+        st.write(f"– {title}")
+
