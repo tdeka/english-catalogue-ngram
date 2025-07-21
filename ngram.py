@@ -4,8 +4,8 @@ import plotly.graph_objs as go
 
 @st.cache_data
 def load_data():
-    df = pd.read_csv("all_titles_by_year.csv")
-    df['year'] = df['year'].astype(int)
+    df = pd.read_csv("all_years.csv")
+    df['catalogue_year'] = df['catalogue_year'].astype(int)
     df['title'] = df['title'].astype(str).str.lower()
     return df
 
@@ -20,12 +20,12 @@ if query:
     words = [w.strip().lower() for w in query.split(",") if w.strip()]
     years = list(range(1912, 1923))
     
-    counts_df = pd.DataFrame({'year': years})
+    counts_df = pd.DataFrame({'catalogue_year': years})
     
     for word in words:
         counts = []
         for year in years:
-            titles_this_year = df[df['year'] == year]['title']
+            titles_this_year = df[df['catalogue_year'] == year]['title']
             count = titles_this_year.str.contains(rf'\b{word}\b').sum()
             counts.append(count)
         counts_df[word] = counts
@@ -35,7 +35,7 @@ if query:
     
     for word in words:
         fig.add_trace(go.Scatter(
-            x=counts_df['year'],
+            x=counts_df['catalogue_year'],
             y=counts_df[word],
             mode='lines+markers',
             name=word,
